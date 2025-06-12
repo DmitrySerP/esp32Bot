@@ -1,40 +1,43 @@
-from aiogram import F, Router
+from aiogram import Router, types
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from aiogram.filters import CommandStart, Command
 
 
 menu_router = Router()
+CHAT_ID = "-4845386829" 
 
-keyboard_menu = ReplyKeyboardMarkup(keyboard=[
-        [KeyboardButton(text='Получить фото'), KeyboardButton(text='Получить видео'), KeyboardButton(text='Опрос датчиков')],
-        [KeyboardButton(text='Выход')]
-    ],
-    resize_keyboard=True,
-    input_field_placeholder='Выберите пункт меню',
-    one_time_keyboard=False
-)
 
+# Создание reply-клавиатуры
+def get_main_keyboard() -> ReplyKeyboardMarkup:
+    kb = [
+        [KeyboardButton(text="/photo"), KeyboardButton(text="/flash")],
+        [KeyboardButton(text="/video"), KeyboardButton(text="/start")]
+    ]
+    return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+
+# Обработчик команды /start
 @menu_router.message(CommandStart())
-async def cmd_start(message: Message):
-    await message.answer('Добро пожаловать в бот ESP32-CAM!!!\nДля управления воспользуйтесь клавиатурой',
-                         reply_markup=keyboard_menu
-                         )
+async def cmd_start(message: types.Message):
+    await message.answer(
+        "Добро пожаловать в ESP32-CAM Telegram бот!\n"
+        "Используйте кнопки ниже для управления устройством.",
+        reply_markup=get_main_keyboard()
+    )
 
-@menu_router.message(F.text =='Получить фото')
-async def get_foto(message: Message):
-    await message.answer('Запрос фото отправлен на ESP32-CAM...', reply_markup=keyboard_menu)
-    
-@menu_router.message(F.text =='Получить видео')
-async def get_video(message: Message):
-    await message.answer('Запрос видео отправлен на ESP32-CAM...', reply_markup=keyboard_menu)
+# Обработчик команд /photo, /flash, /video
+@menu_router.message(Command(commands=["photo", "flash", "video"]))
+async def handle_commands(message: types.Message):
+    command = message.text
+    await message.bot.send_message(chat_id=CHAT_ID, text=command)
+    await message.answer(f"Команда {command} отправлена устройству.", reply_markup=get_main_keyboard())
 
-@menu_router.message(F.text =='Опрос датчиков')
-async def cmd_reading(message: Message):
-    await message.answer('Запрос состояния датчика PIR отправлен...', reply_markup=keyboard_menu)
-
-@menu_router.message(F.text =='Exit')
-async def cmd_exit(message: Message):
-    await message.answer('Вы вышли из бота!👣👣👣\nДля возвращения к боту выполнинте команду "/start".\nДо свидания, всего наилучшего!👋',
-                         reply_markup=ReplyKeyboardRemove())
-    
+# Обработчик текстовых сообщений (для кнопок)
+@menu_router.message()
+async def handle_text(message: types.Message):
+    text = message.text
+    if text in ["/photo", "/flash", "/video", "/start"]:
+        await message.bot.send_message(chat_id=CHAT_ID, text=text)
+        await message.answer(f"Команда {text} отправлена устройству.", reply_markup=get_main_keyboard())
+    else:
+        await message.answer("Пожалуйста, используйте кнопки или команды.", reply_markup=get_main_keyboard())
 
